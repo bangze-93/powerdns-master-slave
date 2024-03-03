@@ -1,0 +1,8 @@
+launch+=gmysql
+gmysql-host={{ db_host }}
+gmysql-port={{ db_port }}
+gmysql-dbname={{ db_name }}
+gmysql-user={{ db_user }}
+gmysql-password={{ db_pass }}
+gmysql-dnssec=yes
+# gmysql-socket=

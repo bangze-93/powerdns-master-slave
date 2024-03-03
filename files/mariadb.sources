@@ -1,0 +1,6 @@
+X-Repolib-Name: MariaDB
+Types: deb
+URIs: https://deb.mariadb.org/10.6/ubuntu
+Suites: focal
+Components: main main/debug
+Signed-By: /etc/apt/keyrings/mariadb.pgp
