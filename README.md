@@ -1,4 +1,4 @@
-# Install PowerDNS and PowerDNS-Admin with Ansible on Ubuntu 20
+# Install PowerDNS and PowerDNS-Admin on Ubuntu 20 using Ansible
 ### Adjust with your env
 - #### <i> vars.yaml </i>
 ```
@@ -24,7 +24,6 @@ master ansible_host=192.168.200.41
 slave  ansible_host=192.168.200.42
 
 [all:vars]
-ansible_connection=ssh
 ansible_user=user
 ansible_ssh_pass=P4s5word
 ansible_become_password=P4s5word
