@@ -1,0 +1,20 @@
+---
+- name: Create zone and add record 
+  ansible.builtin.shell: |
+    pdnsutil create-zone {{ domain_name }}
+    pdnsutil set-kind {{ domain_name }} primary
+    pdnsutil set-meta {{ domain_name }} SOA-EDIT-API DEFAULT
+    pdnsutil secure-zone {{ domain_name }}
+    pdnsutil add-record {{ domain_name }} @ NS 300 ns1.{{ domain_name }}
+    pdnsutil add-record {{ domain_name }} @ NS 300 ns2.{{ domain_name }}
+    pdnsutil add-record {{ domain_name }} ns1 A 300 {{ pdns_master_ip }}
+    pdnsutil add-record {{ domain_name }} ns2 A 300 {{ pdns_slave_ip }}
+    pdnsutil increase-serial {{ domain_name }}
+    pdns_control notify {{ domain_name }}
+  when: inventory_hostname == 'master'
+
+- name: Add autoprimary on Slave 
+  ansible.builtin.shell:
+    cmd: pdnsutil add-autoprimary {{ pdns_master_ip }} ns2.{{ domain_name }} admin
+  when: inventory_hostname == 'slave'
+...

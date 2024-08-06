@@ -1,0 +1,24 @@
+---
+- block:
+
+    - name: Create directory for PowerDNS-Admin
+      ansible.builtin.file:
+        path: /opt/pdns-admin
+        state: directory
+        mode: '0755'
+
+    - name: Configure PowerDNS-Admin compose file
+      ansible.builtin.template:
+        src: pdns-admin-compose.yaml.j2
+        dest: /opt/pdns-admin/pdns-admin.yaml
+        mode: 0644
+
+    - name: Create PowerDNS-Admin container
+      community.docker.docker_compose_v2:
+        project_src: /opt/pdns-admin
+        files: pdns-admin.yaml
+        project_name: pdns-admin
+        state: present
+
+  when: inventory_hostname == 'master'
+...

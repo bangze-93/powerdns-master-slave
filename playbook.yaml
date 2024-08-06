@@ -4,7 +4,7 @@
   become: true
   become_method: sudo
   vars_files:
-    - vars.yaml
+    - all.yaml
   tasks:
     - name: Update and upgrade packages
       ansible.builtin.apt:
@@ -13,210 +13,36 @@
         update_cache: true
         cache_valid_time: 86400
 
-    - name: Create keyrings directory
-      ansible.builtin.file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: 0755
-
-    - name: Add PowerDNS asc key
-      ansible.builtin.get_url:
-        url: https://repo.powerdns.com/FD380FBB-pub.asc
-        dest: /etc/apt/keyrings/pdns-48.asc
-
-    - name: Add PowerDNS repository
-      ansible.builtin.apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/pdns-48.asc arch=amd64] http://repo.powerdns.com/ubuntu focal-auth-48 main"
-        filename: pdns
-        state: present
-
-    - name: Add preference for PowerDNS auth 
-      ansible.builtin.copy:
-        src: auth-48
-        dest: /etc/apt/preferences.d/auth-48
-        mode: 0644
-
-    - name: Add MariaDB pgp key
-      ansible.builtin.apt_key:
-        url: https://mariadb.org/mariadb_release_signing_key.pgp
-        keyring: /etc/apt/keyrings/mariadb.pgp
-        state: present
-
-    - name: Add MariaDB repository
-      ansible.builtin.copy:
-        src: mariadb.sources
-        dest: /etc/apt/sources.list.d/mariadb.sources
-        mode: 0644
-
-    - name: Disable and stop systemd-resolved service
-      ansible.builtin.systemd:
-        name: systemd-resolved
-        state: stopped
-        enabled: no
-
-    - name: Remove /etc/resolv.conf
-      ansible.builtin.file:
-        path: /etc/resolv.conf
-        state: absent
-
-    - name: Create new /etc/resolv.conf
-      ansible.builtin.copy:
-        content: "nameserver 8.8.8.8\n"
-        dest: /etc/resolv.conf
-
-    - name: Install PowerDNS MariaDB and required packages
+    - name: Install required packages
       ansible.builtin.apt:
         pkg:
-          - pdns-server
-          - pdns-backend-mysql 
-          - mariadb-server
           - net-tools
           - python3-pip
+          - mysql-client
         state: present
         update_cache: true
 
     - name: Install pymysql python package
       ansible.builtin.pip:
         name: pymysql
+        
+    - name: Install and configure Docker
+      ansible.builtin.import_tasks: 
+        file: tasks/docker.yaml
 
-    - name: Setup pdns.conf for master
-      ansible.builtin.template:
-        src: pdns-master
-        dest: /etc/powerdns/pdns.conf
-        mode: 0644
-        backup: true
-      when: inventory_hostname == 'master'
+    - name: Install and configure MariaDB
+      ansible.builtin.import_tasks: 
+        file: tasks/mariadb.yaml
 
-    - name: Setup pdns.conf for slave
-      ansible.builtin.template:
-        src: pdns-slave
-        dest: /etc/powerdns/pdns.conf
-        mode: 0644
-        backup: true
-      when: inventory_hostname == 'slave'
+    - name: Install and configure PowerDNS
+      ansible.builtin.import_tasks: 
+        file: tasks/pdns.yaml  
 
-    - name: Setup mysql connection
-      ansible.builtin.template:
-        src: pdns-mysql
-        dest: /etc/powerdns/pdns.d/mysql.conf
-        mode: 0644
+    - name: Install and configure PowerDNS-Admin
+      ansible.builtin.import_tasks: 
+        file: tasks/pdns-admin.yaml
 
-    - name: Create databases on master
-      community.mysql.mysql_db:
-        name: "{{ item }}"
-        state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
-      loop:
-        - "{{ db_name }}"
-        - "{{ db_name_admin }}"
-      when: inventory_hostname == 'master'
-
-    - name: Create databases on slave
-      community.mysql.mysql_db:
-        name: "{{ db_name }}"
-        state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
-      when: inventory_hostname == 'slave'
-
-    - name: Import schema database
-      community.mysql.mysql_db:
-        name: "{{ db_name }}"
-        state: import
-        target: /usr/share/pdns-backend-mysql/schema/schema.mysql.sql
-        login_unix_socket: /run/mysqld/mysqld.sock
-        force: true
-
-    - name: Create user database on master for PowerDNS
-      community.mysql.mysql_user:
-        name: "{{ db_user }}"
-        password: "{{ db_pass }}"
-        priv: "{{ db_name }}.*:ALL"
-        state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
-        column_case_sensitive: false
-      when: inventory_hostname == 'master'
-
-    - name: Create user database on master for PowerDNS-Admin
-      community.mysql.mysql_user:
-        name: "{{ db_user_admin }}"
-        password: "{{ db_pass_admin }}"
-        host: "%"
-        priv: "{{ db_name_admin }}.*:ALL"
-        state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
-        column_case_sensitive: false
-      when: inventory_hostname == 'master'
-
-    - name: Create user database on slave for PowerDNS
-      community.mysql.mysql_user:
-        name: "{{ db_user }}"
-        password: "{{ db_pass }}"
-        priv: "{{ db_name }}.*:ALL"
-        state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
-        column_case_sensitive: false
-      when: inventory_hostname == 'slave'
-
-    - name: Configure mariadb
-      ansible.builtin.command: sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/mariadb.conf.d/50-server.cnf
-
-    - name: Restart PowerDNS and MariaDB
-      ansible.builtin.service:
-        name: "{{ item }}"
-        state: restarted
-        enabled: true
-      loop:
-        - pdns
-        - mariadb
-
-    - name: Add Docker gpg Key on master
-      ansible.builtin.apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        keyring: /etc/apt/keyrings/docker.gpg
-        state: present
-      when: inventory_hostname == 'master'
-
-    - name: Add Docker repository on master
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-        filename: docker
-        state: present
-      when: inventory_hostname == 'master'
-
-    - name: Install Docker and required packages on master
-      ansible.builtin.apt:
-        pkg:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-buildx-plugin 
-          - docker-compose-plugin
-        state: present
-        update_cache: true
-      when: inventory_hostname == 'master'
-
-    - name: Create a network for PowerDNS-Admin on master
-      community.docker.docker_network:
-        name: pdns
-      when: inventory_hostname == 'master'
-
-    - name: Create PowerDNS-admin container on master
-      community.docker.docker_container:
-        name: pdns-admin
-        image: powerdnsadmin/pda-legacy:latest
-        restart_policy: always
-        hostname: pdns
-        ports:
-          - "9191:80"
-        env:
-          SQLALCHEMY_DATABASE_URI: "mysql://{{ db_user_admin }}:{{ db_pass_admin }}@{{ master_ip }}/{{ db_name_admin }}"
-          GUNICORN_TIMEOUT: "60"
-          GUNICORN_WORKERS: "2"
-          GUNICORN_LOGLEVEL: "DEBUG"
-        log_driver: json-file
-        log_options:
-          max-size: 50m
-        networks:
-          - name: pdns
-      when: inventory_hostname == 'master'
+    - name: Add zone and record
+      ansible.builtin.import_tasks: 
+        file: tasks/zone-record.yaml
 ...

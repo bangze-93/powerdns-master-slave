@@ -1,0 +1,8 @@
+[pdns]
+master ansible_host=192.168.90.51
+slave  ansible_host=192.168.90.52
+
+[all:vars]
+ansible_user=user
+ansible_ssh_pass=P4s5word
+ansible_become_password=P4s5word

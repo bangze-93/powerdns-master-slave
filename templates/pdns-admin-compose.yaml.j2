@@ -1,0 +1,21 @@
+services:
+  pdns-admin:
+    image: powerdnsadmin/pda-legacy:latest
+    container_name: pdns-admin
+    hostname: pdns-admin
+    restart: always
+    ports:
+      - '0.0.0.0:{{ pdns_admin_expose_port }}:80'
+    environment:
+      SECRET_KEY: {{ pdns_admin_seckey }}
+      SQLALCHEMY_DATABASE_URI: "mysql://{{ mariadb_user }}:{{ mariadb_password }}@{{ mariadb_host }}:{{ mariadb_expose_port }}/{{ pdns_admin_database }}"
+      GUNICORN_TIMEOUT: 60
+      GUNICORN_WORKERS: 5
+      GUNICORN_LOGLEVEL: INFO
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+networks:
+  default:
+    name: pdns-admin

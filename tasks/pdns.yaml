@@ -1,0 +1,81 @@
+---
+- name: Add PowerDNS asc key
+  ansible.builtin.get_url:
+    url: https://repo.powerdns.com/FD380FBB-pub.asc
+    dest: /etc/apt/keyrings/pdns-49.asc
+
+- name: Add PowerDNS repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/pdns-49.asc arch=amd64] http://repo.powerdns.com/ubuntu focal-auth-49 main"
+    filename: pdns
+    state: present
+
+- name: Add preference for PowerDNS auth 
+  ansible.builtin.copy:
+    src: auth-49
+    dest: /etc/apt/preferences.d/auth-49
+    mode: 0644
+
+- name: Disable and stop systemd-resolved service
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: no
+
+- name: Remove /etc/resolv.conf
+  ansible.builtin.file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: Create new /etc/resolv.conf
+  ansible.builtin.copy:
+    content: "nameserver 8.8.8.8\nnameserver 1.1.1.1\n"
+    dest: /etc/resolv.conf
+
+- name: Install PowerDNS and required packages
+  ansible.builtin.apt:
+    pkg:
+      - pdns-server
+      - pdns-backend-mysql
+    state: present
+    update_cache: true
+
+- name: Setup pdns.conf for master
+  ansible.builtin.template:
+    src: pdns-master.conf.j2
+    dest: /etc/powerdns/pdns.conf
+    mode: 0644
+    backup: true
+  when: inventory_hostname == 'master'
+
+- name: Setup pdns.conf for slave
+  ansible.builtin.template:
+    src: pdns-slave.conf.j2
+    dest: /etc/powerdns/pdns.conf
+    mode: 0644
+    backup: true
+  when: inventory_hostname == 'slave'
+
+- name: Setup mysql connection
+  ansible.builtin.template:
+    src: pdns-mysql.conf.j2
+    dest: /etc/powerdns/pdns.d/mysql.conf
+    mode: 0644
+
+- name: Import schema database for PowerDNS
+  community.mysql.mysql_db:
+    name: "{{ mariadb_database }}"
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+    login_host: "{{ mariadb_host }}"
+    login_port: "{{ mariadb_expose_port }}"
+    state: import
+    target: /usr/share/pdns-backend-mysql/schema/schema.mysql.sql
+    force: true
+
+- name: Restart PowerDNS
+  ansible.builtin.service:
+    name: pdns
+    state: restarted
+    enabled: true
+...

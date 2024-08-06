@@ -1,0 +1,59 @@
+---
+- name: Create MariaDB volume directory
+  ansible.builtin.file:
+    path: "{{ mariadb_vol_dir }}/{{ item }}"
+    state: directory
+    mode: 0755
+  loop:
+    - data 
+    - config 
+
+- name: Configure MariaDB custom config file
+  ansible.builtin.copy:
+    src: my.cnf
+    dest: "{{ mariadb_vol_dir }}/config/"
+    mode: 0644
+
+- name: Configure MariaDB compose file
+  ansible.builtin.template:
+    src: mariadb-compose.yaml.j2
+    dest: "{{ mariadb_vol_dir }}/mariadb.yaml"
+    mode: 0644
+
+- name: Create MariaDB container
+  community.docker.docker_compose_v2:
+    project_src: "{{ mariadb_vol_dir }}"
+    files: mariadb.yaml
+    project_name: mariadb
+    state: present
+
+- name: Wait for 1 minute to prepare MariaDB
+  ansible.builtin.pause:
+    minutes: 1
+
+- block:
+
+    - name: Create database for PowerDNS-Admin
+      community.mysql.mysql_db:
+        name: "{{ pdns_admin_database }}"
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        login_host: "{{ mariadb_host }}"
+        login_port: "{{ mariadb_expose_port }}"
+        state: present
+
+    - name: Grant privileges {{ pdns_admin_database }} to {{ mariadb_user }}
+      community.mysql.mysql_user:
+        append_privs: true
+        name: "{{ mariadb_user }}"
+        priv: "{{ pdns_admin_database }}.*:ALL"
+        host: "%"
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        login_host: "{{ mariadb_host }}"
+        login_port: "{{ mariadb_expose_port }}"
+        state: present
+        column_case_sensitive: false
+            
+  when: inventory_hostname == 'master'
+...

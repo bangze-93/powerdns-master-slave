@@ -1,0 +1,19 @@
+services:
+  mariadb:
+    image: mariadb:{{ mariadb_version }}
+    container_name: mariadb
+    hostname: mariadb
+    restart: always
+    ports:
+      - '0.0.0.0:{{ mariadb_expose_port }}:3306'
+    volumes:
+      - {{ mariadb_vol_dir }}/data:/var/lib/mysql:Z
+      - {{ mariadb_vol_dir }}/config:/etc/mysql/conf.d
+    environment:
+      MARIADB_ROOT_PASSWORD: {{ mariadb_root_password }}
+      MARIADB_USER: {{ mariadb_user }}
+      MARIADB_PASSWORD: {{ mariadb_password }}
+      MARIADB_DATABASE: {{ mariadb_database }}
+networks:
+  default:
+    name: mariadb
