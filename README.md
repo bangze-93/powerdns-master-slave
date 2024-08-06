@@ -40,10 +40,15 @@ ansible_become_password=P4s5word
 ```
 ### Run playbook
 ```
-ansible-playbook -i hosts playbook.yaml
+ansible-playbook playbook.yaml
 ```
 ### Access PoweDNS-Admin dashboard
 http://192.168.90.51:9191/
+![Screenshot from 2024-08-06 11-42-09](https://github.com/user-attachments/assets/7cdfe5e5-b8c5-4bd8-9c4c-c65879751ed3)
+![Screenshot from 2024-08-06 11-43-05](https://github.com/user-attachments/assets/bf288fb4-2e62-4a47-8b1c-41ceeb8b1fee)
+![Screenshot from 2024-08-06 11-48-11](https://github.com/user-attachments/assets/b58a6ed1-130d-4fc7-a028-3a9958518b1f)
+![Screenshot from 2024-08-06 11-48-32](https://github.com/user-attachments/assets/0cb39e8b-c03e-4094-90bf-326a1217cd26)
+![Screenshot from 2024-08-06 11-50-18](https://github.com/user-attachments/assets/6c0fbf79-7616-4055-8eaa-5e3e00c8a15d)
 
-![image](https://github.com/bangze-93/powerdns-master-slave/assets/52735927/d689cb12-3a15-44a4-83ef-4f2a16755a2c)
+
 
