@@ -1,6 +1,6 @@
 # Install PowerDNS and PowerDNS-Admin using Ansible on Ubuntu 20 
 ### Adjust with your env
-- #### <i> vars.yaml </i>
+- ##### <i> ``` vars/all.yaml ``` </i> 
 ```
 ---
 pdns_master_ip: "{{ hostvars['master']['ansible_host'] }}"
@@ -27,7 +27,7 @@ pdns_admin_seckey: UGP8Wy4OQaPqHnCE
 domain_name: test.xyz
 ...
 ```
-- #### <i> hosts </i>
+- ##### <i> ``` inventory/hosts ``` </i>
 ```
 [pdns]
 master ansible_host=192.168.90.51
